@@ -1,0 +1,7 @@
+{
+  "id": "com.dusklight.twilight_compass",
+  "name": "Twilight Compass",
+  "version": "1.0",
+  "author": "CGWolf",
+  "description": "Customizable horizontal compass. Includes optional toggles to display dungeon chest locations when you own the dungeon's compass. Can also display current location name."
+}
