@@ -269,8 +269,8 @@ MOD_EXPORT ModResult mod_initialize(ModError* error) {
         svc_ui->register_mods_panel(mod_ctx, &panel);
     }
 
-    ModResult result = init_compass(svc_hook, error);
-    if (result == MOD_OK && svc_log) svc_log->info(mod_ctx, "Twilight Compass v1.0 initialized");
+    ModResult result = init_compass(svc_hook, mod_ctx, error);
+    if (result == MOD_OK && svc_log) svc_log->info(mod_ctx, "Twilight Compass v1.0.1 initialized");
     return result;
 }
 

@@ -26,7 +26,7 @@ extern int64_t g_locationSize;
 extern int64_t g_locationNameOpacity;
 extern int64_t g_locationAlignment;
 
-ModResult init_compass(const HookService* hookSvc, ModError* error);
+ModResult init_compass(const HookService* hookSvc, ModContext* ctx, ModError* error);
 void update_compass(const LogService* logSvc, ModContext* ctx);
 void shutdown_compass();
 void set_compass_minimap_visibility(bool visible);

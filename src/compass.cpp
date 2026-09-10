@@ -18,6 +18,7 @@
 #include "d/d_s_play.h"
 #include "d/d_tresure.h"
 #include "dusk/map_loader_definitions.h"
+#include "dusk/settings.h"
 #include "d/actor/d_a_alink.h"
 #include "f_op/f_op_camera_mng.h"
 #include "m_Do/m_Do_lib.h"
@@ -45,6 +46,8 @@ int64_t g_locationSize = 100;
 int64_t g_locationNameOpacity = 100;
 int64_t g_locationAlignment = 1;
 
+static dusk::UserSettings& (*s_getSettings)() = nullptr;
+
 DEFINE_HOOK(&dMeter2Draw_c::draw, Meter2DrawHook);
 DEFINE_HOOK(&dMeterMap_c::draw, MeterMapDrawHook);
 DEFINE_HOOK(&dMeterMap_c::keyCheck, MeterMapKeyCheckHook);
@@ -56,6 +59,7 @@ struct CompassState {
     cXyz playerPos{};
     cXyz cameraDir{};
     f32 cameraYaw = 0.0f;
+    bool mirrorMode = false;
     bool dungeonCompass = false;
     bool valid = false;
 };
@@ -131,8 +135,17 @@ static void updateState() {
 
     s_state.cameraDir = *center - *eye;
     if (std::fabs(s_state.cameraDir.x) + std::fabs(s_state.cameraDir.z) < 0.001f) return;
-    s_state.cameraYaw = std::atan2(s_state.cameraDir.x, s_state.cameraDir.z);
-    s_state.valid = true;
+		s_state.cameraYaw = std::atan2(s_state.cameraDir.x, s_state.cameraDir.z);
+
+	if (s_getSettings != nullptr) {
+		s_state.mirrorMode = s_getSettings().game.enableMirrorMode.getValue();
+
+		if (s_state.mirrorMode) {
+        s_state.cameraYaw = -s_state.cameraYaw;
+		}
+	}
+
+	s_state.valid = true;
 
     s_state.dungeonCompass = dComIfGs_isDungeonItemCompass() != 0;
 
@@ -267,10 +280,15 @@ static void drawCompass() {
                 if (rawPos != nullptr) {
                     const cXyz chestPos(rawPos->x, rawPos->y, rawPos->z);
                     const f32 dx = chestPos.x - s_state.playerPos.x;
-                    const f32 dz = chestPos.z - s_state.playerPos.z;
-                    const f32 distance = std::sqrt(dx * dx + dz * dz);
-                    const f32 worldAngle = std::atan2(dx, dz);
-                    const f32 relative = wrapPi(s_state.cameraYaw - worldAngle);
+					const f32 dz = chestPos.z - s_state.playerPos.z;
+					const f32 distance = std::sqrt(dx * dx + dz * dz);
+
+					f32 worldAngle = std::atan2(dx, dz);
+					if (s_state.mirrorMode) {
+					worldAngle = -worldAngle;
+					}
+
+					const f32 relative = wrapPi(s_state.cameraYaw - worldAngle);
                     const f32 x = centerX + relative * pxPerRad;
                     if (x >= centerX - half && x <= centerX + half) {
                         const bool sameRoom = chest->getRoomNo() == static_cast<int>(dComIfGp_roomControl_getStayNo());
@@ -507,8 +525,17 @@ void set_compass_minimap_visibility(bool visible) {
     }
 }
 
-ModResult init_compass(const HookService* hookSvc, ModError* error) {
+ModResult init_compass(const HookService* hookSvc, ModContext* ctx, ModError* error) {
     if (!hookSvc) return MOD_OK;
+	
+	void* settingsAddress = nullptr;
+ModResult settingsResult =
+    hookSvc->resolve(ctx, "dusk::getSettings", &settingsAddress, nullptr);
+
+if (settingsResult == MOD_OK) {
+    s_getSettings =
+        reinterpret_cast<dusk::UserSettings& (*)()>(settingsAddress);
+	}
 
     ModResult result = mods::hook::add_pre<MeterMapDrawHook>(hookSvc, onMeterMapDrawPre);
     if (result != MOD_OK) return result;
@@ -523,4 +550,7 @@ ModResult init_compass(const HookService* hookSvc, ModError* error) {
 }
 
 void update_compass(const LogService*, ModContext*) {}
-void shutdown_compass() { s_state = {}; }
+void shutdown_compass() {
+    s_state = {};
+    s_getSettings = nullptr;
+}
