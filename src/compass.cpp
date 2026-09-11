@@ -110,7 +110,21 @@ static const char* currentLocationName() {
     if (stageName == nullptr || stageName[0] == '\0') return nullptr;
     const int roomNo = static_cast<int>(dComIfGp_roomControl_getStayNo());
     const auto* map = currentMapEntry(stageName, roomNo, nullptr);
-    return map != nullptr ? map->mapName : nullptr;
+    if (map == nullptr || map->mapName == nullptr) return nullptr;
+
+    // Dusklight's map definitions use the canonical world names for the
+    // Castle Town exterior areas. Mirror Mode flips the world, so the
+    // East/West labels need to be swapped for the HUD as well.
+    if (s_state.mirrorMode) {
+        if (std::strcmp(map->mapName, "Outside Castle Town - East") == 0) {
+            return "Outside Castle Town - West";
+        }
+        if (std::strcmp(map->mapName, "Outside Castle Town - West") == 0) {
+            return "Outside Castle Town - East";
+        }
+    }
+
+    return map->mapName;
 }
 
 static void updateState() {
